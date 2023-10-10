@@ -2,3 +2,4 @@
 data = read.csv("train.csv")
 View(data)
 str(data)
+summary(data)
