@@ -1,6 +1,6 @@
 #Data Collection
 data = read.csv("train.csv")
-View(data)
+ (data)
 str(data)
 summary(data)
 
@@ -20,7 +20,7 @@ data <- subset(data, select = -Alley)
 
 data$MSZoning = as.numeric(factor(data$MSZoning,levels=unique(data$MSZoning)))
 data$Street = as.numeric(factor(data$Street,levels=unique(data$Street)))
-View(data)
+ (data)
 colSums(is.na(data))
 # Columns with NAs are : LotFrontage, MasVnrType, MasVnrArea, BsmtQual, BsmtCond,
 # BsmtExposure, BsmtFinType1, BsmtFinType2, FireplaceQu, GarageType, GarageYrBlt, 
@@ -29,7 +29,7 @@ colSums(is.na(data))
 #Columns which can be removed: PoolQC, MiscFeature, Fence
 data <- subset(data, select = -PoolQC)
 data <- subset(data, select = -c(MiscFeature, Fence))
-View(data)
+ (data)
 
 summary(data$LotFrontage)
 
@@ -132,7 +132,7 @@ data$Utilities =
 data <- subset(data, select = -LandSlope)
 data <- subset(data, select = -Neighborhood)
 data <- subset(data, select = -c(Condition1,Condition2))
-
+data <- subset(data, select = -RoofMatl)
 
 #Data Splitting 
 library(caTools)
@@ -144,3 +144,10 @@ Linear_Reg_Model = lm(SalePrice~.,data=dataTrain)
 Predictions <- predict(Linear_Reg_Model,newdata = dataTest)
 rmse <- sqrt(mean((Predictions-dataTest$SalePrice)^2))
 cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+class(dataTest$SalePrice)
+Predictions = as.integer(Predictions)
+View(data)
+plot(dataTest$LotArea, dataTest$SalePrice, col = "blue", pch = 16,  main = "Actual vs. Predicted Values")
+points(dataTest$LotArea, Predictions, col = "red", pch = 17)
+legend("topleft", legend = c("Actual", "Predicted"), 
+       col = c("blue", "red"), pch = c(16, 17))
