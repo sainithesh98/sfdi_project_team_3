@@ -151,3 +151,7 @@ plot(dataTest$LotArea, dataTest$SalePrice, col = "blue", pch = 16,  main = "Actu
 points(dataTest$LotArea, Predictions, col = "red", pch = 17)
 legend("topleft", legend = c("Actual", "Predicted"), 
        col = c("blue", "red"), pch = c(16, 17))
+#Plotting the Box Plot and dont find much outliers in the required params
+for (col in colnames(data)) {
+  boxplot(data[, col], main = paste("Box Plot for", col))
+}
