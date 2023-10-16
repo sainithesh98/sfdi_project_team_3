@@ -1,6 +1,8 @@
 #Data Collection
-data = read.csv("train.csv")
- (data)
+#Switch based on the Training or Testing
+#data = read.csv("train.csv")
+data = read.csv("test.csv")
+(data)
 str(data)
 summary(data)
 
@@ -29,12 +31,19 @@ colSums(is.na(data))
 #Columns which can be removed: PoolQC, MiscFeature, Fence
 data <- subset(data, select = -PoolQC)
 data <- subset(data, select = -c(MiscFeature, Fence))
- (data)
-
+View(data)
+table((data$MSZoning))
 summary(data$LotFrontage)
+data$MSZoning[is.na(data$MSZoning)]=2
+
+table((data$Utilities))
+data$Utilities[is.na(data$Utilities)]="AllPub"
+sum(is.na(data$Utilities))
+
+
 
 #Replacing the NA values for 
-data$LotFrontage
+table(data$LotFrontage)
 sum(is.na(data$LotFrontage))
 mean(data$LotFrontage[!is.na(data$LotFrontage)])
 data$LotFrontage[is.na(data$LotFrontage)]=
@@ -58,15 +67,16 @@ table(data$BsmtQual)
 ggplot(data,aes(BsmtQual))+
   geom_bar()
 sum(is.na(data$BsmtQual))
-data$BsmtQual
-data <- data[!is.na(data$BsmtQual), ]
+table(data$BsmtQual)
+data$BsmtQual[is.na(data$BsmtQual)]='TA'
 data$BsmtQual = as.numeric(factor(data$BsmtQual,levels=unique(data$BsmtQual)))
 
 #Removed the NA in BsmtExposure
 str(data$BsmtCond)
-unique(data$BsmtExposure)
+table(data$BsmtExposure)
 sum(is.na(data$BsmtExposure))
-data <- data[!is.na(data$BsmtExposure), ]
+data$BsmtExposure[is.na(data$BsmtExposure)]='No'
+#data <- data[!is.na(data$BsmtExposure), ]
 data$BsmtCond = 
   as.numeric(factor(data$BsmtCond,levels=unique(data$BsmtCond)))
 
@@ -129,25 +139,47 @@ data$LandContour =
   as.numeric(factor(data$LandContour,levels=unique(data$LandContour)))
 data$Utilities = 
   as.numeric(factor(data$Utilities,levels=unique(data$Utilities)))
+data$KitchenQual = 
+  as.numeric(factor(data$KitchenQual,levels=unique(data$KitchenQual)))
+data$GarageArea[is.na(data$GarageArea)]=mean(data$GarageArea[!is.na(data$GarageArea)])
+
 data <- subset(data, select = -LandSlope)
 data <- subset(data, select = -Neighborhood)
 data <- subset(data, select = -c(Condition1,Condition2))
 data <- subset(data, select = -RoofMatl)
-
+data <- subset(data, select = -Exterior1st)
+data <- subset(data, select = -Exterior2nd)
+data <- subset(data, select = -Functional)
+data <- subset(data, select = -GarageCars)
+data <- subset(data, select = -SaleType)
+data <- subset(data, select = -HouseStyle)
+table(data$KitchenQual)
+data$KitchenQual[is.na(data$KitchenQual)]=1
+colnames(data)
+colnames(dataTest)
+View(data)
 #Data Splitting 
 library(caTools)
 split = sample.split(data$SalePrice,SplitRatio = 0.75) 
 dataTrain = subset(data,split==TRUE)
 dataTest = subset(data,split==FALSE)
-Linear_Reg_Model = lm(SalePrice~.,data=dataTrain)
+unique(dataTrain$RoofStyle)
+colSums(is.na(data))
+#Best Modelling
+Linear_Reg_Model = lm(SalePrice~MSSubClass+LotFrontage+LotArea+OverallQual+
+                        MasVnrArea+TotalBsmtSF+GrLivArea+BedroomAbvGr+
+                        KitchenQual+GarageArea+PoolArea,data=dataTrain)
 
-Predictions <- predict(Linear_Reg_Model,newdata = dataTest)
-rmse <- sqrt(mean((Predictions-dataTest$SalePrice)^2))
+#Predictions of the Model
+Predictions <- predict(Linear_Reg_Model,newdata = data)
+class(Predictions)
+rmse <- sqrt(mean((Predictions-data$SalePrice)^2))
 cat("Root Mean Squared Error (RMSE):", rmse, "\n")
 class(dataTest$SalePrice)
 Predictions = as.integer(Predictions)
 View(data)
-plot(dataTest$LotArea, dataTest$SalePrice, col = "blue", pch = 16,  main = "Actual vs. Predicted Values")
+plot(dataTest$LotArea, dataTest$SalePrice, col = "blue", pch = 16,  
+     main = "Actual vs. Predicted Values")
 points(dataTest$LotArea, Predictions, col = "red", pch = 17)
 legend("topleft", legend = c("Actual", "Predicted"), 
        col = c("blue", "red"), pch = c(16, 17))
@@ -155,3 +187,9 @@ legend("topleft", legend = c("Actual", "Predicted"),
 for (col in colnames(data)) {
   boxplot(data[, col], main = paste("Box Plot for", col))
 }
+nrow(data$MSSubClass)
+result_df <- data.frame(Id= data$Id, SalePrice = Predictions)
+write.csv(result_df, file = "sample_submission.csv", row.names = FALSE)
+sum(is.na(result_df))
+result_df$SalePrice[is.na(result_df$SalePrice)]=
+  mean(result_df$SalePrice[!is.na(result_df$SalePrice)])
