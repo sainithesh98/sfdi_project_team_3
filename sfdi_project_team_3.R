@@ -1,7 +1,7 @@
 #Data Collection
 #Switch based on the Training or Testing
-#data = read.csv("train.csv")
-data = read.csv("test.csv")
+data = read.csv("train.csv")
+#data = read.csv("test.csv")
 (data)
 str(data)
 summary(data)
@@ -171,7 +171,7 @@ Linear_Reg_Model = lm(SalePrice~MSSubClass+LotFrontage+LotArea+OverallQual+
                         KitchenQual+GarageArea+PoolArea,data=dataTrain)
 
 #Predictions of the Model
-Predictions <- predict(Linear_Reg_Model,newdata = data)
+Predictions <- predict(Linear_Reg_Model,newdata = dataTest)
 class(Predictions)
 rmse <- sqrt(mean((Predictions-data$SalePrice)^2))
 cat("Root Mean Squared Error (RMSE):", rmse, "\n")
