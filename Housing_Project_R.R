@@ -569,7 +569,7 @@ str(train)
 Linear_Reg_Model = lm(SalePrice~.,data=dataTrain)
 Linear_Reg_Model_1 = lm(SalePrice~MSSubClass+LotFrontage+LotArea+OverallQual+
                           MasVnrArea+GrLivArea+BedroomAbvGr+
-                          KitchenQual+GarageCars+PoolArea,data=train)
+                          KitchenQual+GarageCars+PoolArea,data=dataTrain)
 
 summary(Linear_Reg_Model)
 Predictions <- predict(Linear_Reg_Model,newdata = test)
@@ -596,7 +596,15 @@ ScreenPorch+WoodDeckSF+GarageCars+Functional+BsmtFullBath+X2ndFlrSF+X1stFlrSF+Bs
 
 
 #-----------------------------Random Forest Model-----------------------------
-rf_model <- randomForest(SalePrice ~ ., data = dataTrain, ntree = 100,importance = TRUE)
+rf_model <- randomForest(SalePrice ~ NeighRich+PoolQC+PoolArea+X3SsnPorch+MiscFeature+Condition2+
+                           LowQualFinSF+IsNew+BsmtHalfBath+MiscVal+Street+BsmtFinSF2+Heating+RoofMatl+
+                           ScreenPorch+SaleType+LotConfig+Electrical+Remod+LandSlope+BsmtFinType2+
+                           RoofStyle+Fence+HalfBath+Condition1+LandContour+MasVnrType+LotShape+
+                           HouseStyle+EnclosedPorch+BldgType+YrSold+Functional+BsmtCond+PavedDrive+
+                           Exterior1st+KitchenAbvGr+SaleCondition+Exterior2nd+MoSold+BedroomAbvGr+
+                           BsmtExposure+WoodDeckSF+GarageQual+MasVnrArea+Neighborhood+TotalPorchSF+
+                           Foundation+OpenPorchSF+TotRmsAbvGrd
+                           , data = dataTrain,importance = TRUE)
 imp_RF <- importance(rf_model)
 imp_DF <- data.frame(Variables = row.names(imp_RF), MSE = imp_RF[,1])
 dim(imp_DF)
@@ -609,8 +617,9 @@ ggplot(imp_DF[1:20,], aes(x=reorder(Variables, MSE), y=MSE, fill=MSE)) +
 colnames(all)
 summary(rf_model)
 
-predictions <- predict(rf_model, newdata = test)
-result_df <- data.frame(Id= test_final$Id, SalePrice = predictions_rf)
-result_dt <- data.frame(Id= test_final$Id, SalePrice = predictions)
-write.csv(result_df, file = "sample_submission.csv", row.names = FALSE)
-sum(is.na(result_df))
+predictions <- predict(rf_model, newdata = dataTest)
+rmse <- sqrt(mean((predictions-dataTest$SalePrice)^2))
+cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+result_rf <- data.frame(Id= test$Id, SalePrice = predictions*10^5)
+write.csv(result_rf, file = "sample_submission.csv", row.names = FALSE)
+sum(is.na(result_rf))
