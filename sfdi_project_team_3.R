@@ -153,11 +153,22 @@ data <- subset(data, select = -Functional)
 data <- subset(data, select = -GarageCars)
 data <- subset(data, select = -SaleType)
 data <- subset(data, select = -HouseStyle)
+data <- subset(data, select = -Id)
 table(data$KitchenQual)
 data$KitchenQual[is.na(data$KitchenQual)]=1
 colnames(data)
 colnames(dataTest)
 View(data)
+
+table(data$LotShape)
+data$LotShape = 
+  as.numeric(factor(data$LotShape,levels=unique(data$LotShape)))
+
+table(data$LandContour)
+data$LandContour = 
+  as.numeric(factor(data$LandContour,levels=unique(data$LandContour)))
+
+
 #Data Splitting 
 library(caTools)
 split = sample.split(data$SalePrice,SplitRatio = 0.75) 
@@ -169,7 +180,9 @@ colSums(is.na(data))
 Linear_Reg_Model = lm(SalePrice~MSSubClass+LotFrontage+LotArea+OverallQual+
                         MasVnrArea+TotalBsmtSF+GrLivArea+BedroomAbvGr+
                         KitchenQual+GarageArea+PoolArea,data=dataTrain)
-
+Linear_Reg_Model_1 = lm(SalePrice~.,data=dataTrain)
+summary(Linear_Reg_Model_1)
+View(data)
 #Predictions of the Model
 Predictions <- predict(Linear_Reg_Model,newdata = dataTest)
 class(Predictions)
@@ -193,3 +206,5 @@ write.csv(result_df, file = "sample_submission.csv", row.names = FALSE)
 sum(is.na(result_df))
 result_df$SalePrice[is.na(result_df$SalePrice)]=
   mean(result_df$SalePrice[!is.na(result_df$SalePrice)])
+
+colnames(data)
