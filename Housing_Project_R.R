@@ -21,6 +21,7 @@ library(rpart)
 install.packages("rpart.plot")
 library(rpart.plot)
 library(randomForest)
+library(gridExtra)
 
 #Training and testing data
 train <- read.csv("train.csv", stringsAsFactors = F)
@@ -72,7 +73,7 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice)
 #Above Grade Living Area (square feet) Variable
 ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
   geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
-  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000)) +
   geom_text_repel(aes(label = ifelse(all$GrLivArea[!is.na(all$SalePrice)]>4500, rownames(all), 
                                      '')))
 
@@ -91,23 +92,28 @@ Qualities <- c('None' = 0, 'Po' = 1, 'Fa' = 2, 'TA' = 3, 'Gd' = 4, 'Ex' = 5)
 all$PoolQC<-as.integer(revalue(all$PoolQC, Qualities))
 table(all$PoolQC)
 
+#PoolArea
+all[all$PoolArea>0 & all$PoolQC==0, c('PoolArea', 'PoolQC', 'OverallQual')]
+all$PoolQC[2421] <- 2
+all$PoolQC[2504] <- 3
+all$PoolQC[2600] <- 2
+
 #Miscellaneous Feature
 all$MiscFeature[is.na(all$MiscFeature)] <- 'None'
-all$MiscFeature <- as.numeric(factor(all$MiscFeature))
-unique(all$MiscFeature)
+all$MiscFeature <- as.factor(all$MiscFeature)
+
 ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
   geom_bar(stat='summary', fun.y = "median", fill='blue') +
-  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000)) +
   geom_label(stat = "count", aes(label = ..count.., y = ..count..))
 table(all$MiscFeature)
-sum(is.na(all$MiscFeature))
 
 #Alley
 all$Alley[is.na(all$Alley)] <- 'None'
 all$Alley <- as.factor(all$Alley)
 ggplot(all[!is.na(all$SalePrice),], aes(x=Alley, y=SalePrice)) +
   geom_bar(stat='summary', fun.y = "median", fill='blue')+
-  scale_y_continuous(breaks= seq(0, 200000, by=50000), labels = comma)
+  scale_y_continuous(breaks= seq(0, 200000, by=50000))
 table(all$Alley)
 
 #Fence
@@ -116,7 +122,7 @@ all[!is.na(all$SalePrice),] %>% group_by(Fence) %>% summarise(median = median(Sa
 all$Fence[is.na(all$Fence)] <- 'None'
 table(all$Fence)
 #Convert the Fence to Factor
-all$Fence <- as.numeric(factor(all$Fence))
+all$Fence <- as.factor(all$Fence)
 
 #Fireplace Variable
 all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
@@ -142,9 +148,9 @@ sum(table(all$LotShape))
 
 ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(LotConfig), y=SalePrice)) +
   geom_bar(stat='summary', fun.y = "median", fill='blue')+
-  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000)) +
   geom_label(stat = "count", aes(label = ..count.., y = ..count..))
-all$LotConfig <- as.numeric(factor(all$LotConfig))
+all$LotConfig <- as.factor(all$LotConfig)
 table(all$LotConfig)
 
 
@@ -170,13 +176,13 @@ length(which(is.na(all$GarageType) & is.na(all$GarageFinish) &
                is.na(all$GarageCond) & is.na(all$GarageQual)))
 
 all$GarageType[is.na(all$GarageType)] <- 'No Garage'
-all$GarageType <- as.numeric(factor(all$GarageType))
+all$GarageType <- as.factor(all$GarageType)
 table(all$GarageType)
 
 all$GarageFinish[is.na(all$GarageFinish)] <- 'None'
 Finish <- c('None'=0, 'Unf'=1, 'RFn'=2, 'Fin'=3)
 
-all$GarageFinish<-as.numeric(factor(all$GarageFinish, Finish))
+all$GarageFinish<-as.integer(revalue(all$GarageFinish, Finish))
 table(all$GarageFinish)
 
 all$GarageQual[is.na(all$GarageQual)] <- 'None'
@@ -258,18 +264,19 @@ all[!is.na(all$SalePrice),] %>% group_by(MasVnrType) %>% summarise(median = medi
 Masonry <- c('None'=0, 'BrkCmn'=0, 'BrkFace'=1, 'Stone'=2)
 all$MasVnrType<-as.integer(revalue(all$MasVnrType, Masonry))
 table(all$MasVnrType)
+
 all$MasVnrArea[is.na(all$MasVnrArea)] <-0
 
 
 #MSZoning
 all$MSZoning[is.na(all$MSZoning)] <- names(sort(-table(all$MSZoning)))[1]
-all$MSZoning <- as.numeric(factor(all$MSZoning))
+all$MSZoning <- as.factor(all$MSZoning)
 table(all$MSZoning)
 sum(table(all$MSZoning))
 
 #Kitchen Variables
 all$KitchenQual[is.na(all$KitchenQual)] <- 'TA' #replace with most common value
-all$KitchenQual<-as.numeric(factor(all$KitchenQual, Qualities))
+all$KitchenQual<-as.integer(revalue(all$KitchenQual, Qualities))
 table(all$KitchenQual)
 sum(table(all$KitchenQual))
 
@@ -290,20 +297,20 @@ sum(table(all$Functional))
 
 #Exterior Variables
 all$Exterior1st[is.na(all$Exterior1st)] <- names(sort(-table(all$Exterior1st)))[1]
-all$Exterior1st <- as.numeric(factor(all$Exterior1st))
+all$Exterior1st <- as.factor(all$Exterior1st)
 table(all$Exterior1st)
 
 all$Exterior2nd[is.na(all$Exterior2nd)] <- names(sort(-table(all$Exterior2nd)))[1]
-all$Exterior2nd <- as.numeric(factor(all$Exterior2nd))
+all$Exterior2nd <- as.factor(all$Exterior2nd)
 table(all$Exterior2nd)
 
-all$ExterQual<-as.integer(factor(all$ExterQual, Qualities))
+all$ExterQual<-as.integer(revalue(all$ExterQual, Qualities))
 table(all$ExterQual)
 sum(table(all$ExterQual))
 
 #ExtCond No NAs
 all$ExterCond[is.na(all$ExterCond)] <- 'None'
-all$ExterCond<-as.integer(factor(all$ExterCond, Qualities))
+all$ExterCond<-as.integer(revalue(all$ExterCond, Qualities))
 table(all$ExterCond)
 sum(is.na(all$ExterCond))
 
@@ -311,14 +318,14 @@ sum(is.na(all$ExterCond))
 #imputing mode
 all$Electrical[is.na(all$Electrical)] <- names(sort(-table(all$Electrical)))[1]
 
-all$Electrical <- as.numeric(factor(all$Electrical))
+all$Electrical <- as.factor(all$Electrical)
 table(all$Electrical)
 
 #Sale Type and Condition 
 #imputing mode
 all$SaleType[is.na(all$SaleType)] <- names(sort(-table(all$SaleType)))[1]
 
-all$SaleType <- as.numeric(factor(all$SaleType))
+all$SaleType <- as.factor(all$SaleType)
 table(all$SaleType)
 
 sum(table(all$SaleType))
@@ -338,83 +345,86 @@ Charcol
 cat('There are', length(Charcol), 'remaining columns with character values')
 
 #No ordinality, so converting into factors
-all$Foundation <- as.numeric(factor(all$Foundation))
+all$Foundation <- as.factor(all$Foundation)
 table(all$Foundation)
 sum(table(all$Foundation))
 
 
 #Heating and Airco
-all$Heating <- as.numeric(factor(all$Heating))
+all$Heating <- as.factor(all$Heating)
 table(all$Heating)
 
-all$HeatingQC<-as.integer(factor(all$HeatingQC, Qualities))
+all$HeatingQC<-as.integer(revalue(all$HeatingQC, Qualities))
 table(all$HeatingQC)
 sum(table(all$HeatingQC))
 
-all$CentralAir<-as.integer(factor(all$CentralAir, c('N'=0, 'Y'=1)))
+all$CentralAir<-as.integer(revalue(all$CentralAir, c('N'=0, 'Y'=1)))
 table(all$CentralAir)
 
 
 #RoofStyle
-all$RoofStyle <- as.numeric(factor(all$RoofStyle))
+all$RoofStyle <- as.factor(all$RoofStyle)
 table(all$RoofStyle)
 
 #No ordinality, so converting into factors
-all$RoofMatl <- as.numeric(factor(all$RoofMatl))
+all$RoofMatl <- as.factor(all$RoofMatl)
 table(all$RoofMatl)
 
 #LandContour
 #No ordinality, so converting into factors
-all$LandContour <- as.numeric(factor(all$LandContour))
+all$LandContour <- as.factor(all$LandContour)
 table(all$LandContour)
 
-all$LandSlope<-as.integer(factor(all$LandSlope, c('Sev'=0, 'Mod'=1, 'Gtl'=2)))
+all$LandSlope<-as.integer(revalue(all$LandSlope, c('Sev'=0, 'Mod'=1, 'Gtl'=2)))
 table(all$LandSlope)
 
 #Dwelling
 ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(BldgType), y=SalePrice)) +
   geom_bar(stat='summary', fun.y = "median", fill='blue')+
-  scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000)) +
   geom_label(stat = "count", aes(label = ..count.., y = ..count..))
 
 #No ordinality, so converting into factors
-all$BldgType <- as.numeric(factor(all$BldgType))
+all$BldgType <- as.factor(all$BldgType)
 table(all$BldgType)
 
 #No ordinality, so converting into factors
-all$HouseStyle <- as.numeric(factor(all$HouseStyle))
+all$HouseStyle <- as.factor(all$HouseStyle)
 table(all$HouseStyle)
+sum(table(all$HouseStyle))
 
 #Neighborhood and Condition
-all$Neighborhood <- as.numeric(factor(all$Neighborhood))
+all$Neighborhood <- as.factor(all$Neighborhood)
 table(all$Neighborhood)
 
-all$Condition1 <- as.numeric(factor(all$Condition1))
+all$Condition1 <- as.factor(all$Condition1)
 table(all$Condition1)
 
-all$Condition2 <- as.numeric(factor(all$Condition2))
+all$Condition2 <- as.factor(all$Condition2)
 table(all$Condition2)
 
 #Pavement of Streets and Driveway
-all$Street<-as.integer(factor(all$Street, c('Grvl'=0, 'Pave'=1)))
+all$Street<-as.integer(revalue(all$Street, c('Grvl'=0, 'Pave'=1)))
 table(all$Street)
 
-all$PavedDrive<-as.integer(factor(all$PavedDrive, c('N'=0, 'P'=1, 'Y'=2)))
+all$PavedDrive<-as.integer(revalue(all$PavedDrive, c('N'=0, 'P'=1, 'Y'=2)))
 table(all$PavedDrive)
 
 
 #Factoring some numberic to factors
-all$MoSold <- as.numeric(factor(all$MoSold))
+str(all$YrSold)
+str(all$MoSold)
+all$MoSold <- as.factor(all$MoSold)
 ys <- ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(YrSold), y=SalePrice)) +
   geom_bar(stat='summary', fun.y = "median", fill='blue')+
-  scale_y_continuous(breaks= seq(0, 800000, by=25000), labels = comma) +
+  scale_y_continuous(breaks= seq(0, 800000, by=25000)) +
   geom_label(stat = "count", aes(label = ..count.., y = ..count..)) +
   coord_cartesian(ylim = c(0, 200000)) +
   geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
 
 ms <- ggplot(all[!is.na(all$SalePrice),], aes(x=MoSold, y=SalePrice)) +
   geom_bar(stat='summary', fun.y = "median", fill='blue')+
-  scale_y_continuous(breaks= seq(0, 800000, by=25000), labels = comma) +
+  scale_y_continuous(breaks= seq(0, 800000, by=25000)) +
   geom_label(stat = "count", aes(label = ..count.., y = ..count..)) +
   coord_cartesian(ylim = c(0, 200000)) +
   geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
@@ -422,10 +432,10 @@ grid.arrange(ys, ms, widths=c(1,2))
 
 
 #Revalue the MSSubClass
-all$MSSubClass <- as.numeric(factor(all$MSSubClass))
+all$MSSubClass <- as.factor(all$MSSubClass)
 
 #revalue for better readability
-all$MSSubClass<-factor(all$MSSubClass, c('20'='1 story 1946+', '30'='1 story 1945-', 
+all$MSSubClass<-revalue(all$MSSubClass, c('20'='1 story 1946+', '30'='1 story 1945-', 
                                           '40'='1 story unf attic', '45'='1,5 story unf', 
                                           '50'='1,5 story fin', '60'='2 story 1946+', 
                                           '70'='2 story 1945-', '75'='2,5 story all ages', 
@@ -455,8 +465,11 @@ cor_numVar <- cor_numVar[CorHigh, CorHigh]
 
 corrplot.mixed(cor_numVar, tl.col="black", tl.pos = "lt", tl.cex = 0.7,cl.cex = .7, number.cex=.7)
 dim(all)
+colSums(is.na())
 set.seed(2018)
-quick_RF <- randomForest(x=all, y=all$SalePrice, ntree=100,importance=TRUE)
+train <- all[!is.na(all$SalePrice),]
+test <- all[is.na(all$SalePrice),]
+quick_RF <- randomForest(train, y=train$SalePrice, ntree=100,importance=TRUE)
 imp_RF <- importance(quick_RF)
 imp_DF <- data.frame(Variables = row.names(imp_RF), MSE = imp_RF[,1])
 imp_DF <- imp_DF[order(imp_DF$MSE, decreasing = TRUE),]
@@ -470,10 +483,59 @@ all <- subset(all, select = -c(LotArea,BsmtQual,YearBuilt,Fireplaces,
                                BsmtFullBath,ExterQual,GarageType))
 #------------------------> Feature Engineering ---------------------------------->
 all$TotBathrooms <- all$FullBath + (all$HalfBath*0.5) + all$BsmtFullBath + (all$BsmtHalfBath*0.5)
+all$FullBath + (all$HalfBath*0.5) + all$BsmtFullBath + (all$BsmtHalfBath*0.5)
+all$Remod <- ifelse(all$YearBuilt==all$YearRemodAdd, 0, 1)
+ifelse(all$YearBuilt==all$YearRemodAdd, 0, 1)#0=No Remodeling, 1=Remodeling
+tb1 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=as.factor(TotBathrooms), y=SalePrice))+
+  geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000))
+tb2 <- ggplot(data=all, aes(x=as.factor(TotBathrooms))) +
+  geom_histogram(stat='count')
+grid.arrange(tb1, tb2)
 all$Remod <- ifelse(all$YearBuilt==all$YearRemodAdd, 0, 1) #0=No Remodeling, 1=Remodeling
 all$Age <- as.numeric(all$YrSold)-all$YearRemodAdd
+
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=Age, y=SalePrice))+
+  geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000))
+
+cor(all$SalePrice[!is.na(all$SalePrice)], all$Age[!is.na(all$SalePrice)])
+
+ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(Remod), y=SalePrice)) +
+  geom_bar(stat='summary', fun.y = "median", fill='blue') +
+  geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=6) +
+  scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
+  theme_grey(base_size = 18) +
+  geom_hline(yintercept=163000, linetype="dashed") #dashed line is median SalePrice
+
 all$IsNew <- ifelse(all$YrSold==all$YearBuilt, 1, 0)
+all$YrSold==all$YearBuilt
 table(all$IsNew)
+
+ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(IsNew), y=SalePrice)) +
+  geom_bar(stat='summary', fun.y = "median", fill='blue') +
+  geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=6) +
+  scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
+  theme_grey(base_size = 18) +
+  geom_hline(yintercept=163000, linetype="dashed") #dashed line is median SalePrice
+
+all$YrSold <- as.factor(all$YrSold) #the numeric version is now not needed anymore
+
+
+nb1 <- ggplot(all[!is.na(all$SalePrice),], aes(x=reorder(Neighborhood, SalePrice, FUN=median), y=SalePrice)) +
+  geom_bar(stat='summary', fun.y = "median", fill='blue') + labs(x='Neighborhood', y='Median SalePrice') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
+  geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3) +
+  geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
+nb2 <- ggplot(all[!is.na(all$SalePrice),], aes(x=reorder(Neighborhood, SalePrice, FUN=mean), y=SalePrice)) +
+  geom_bar(stat='summary', fun.y = "mean", fill='blue') + labs(x='Neighborhood', y="Mean SalePrice") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(breaks= seq(0, 800000, by=50000)) +
+  geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3) + geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
+grid.arrange(nb1, nb2)
+
+
 
 all$NeighRich[all$Neighborhood %in% c('StoneBr', 'NridgHt', 'NoRidge')] <- 2
 all$NeighRich[!all$Neighborhood %in% c('MeadowV', 'IDOTRR', 'BrDale', 'StoneBr', 'NridgHt', 'NoRidge')] <- 1
@@ -482,12 +544,34 @@ all$NeighRich[all$Neighborhood %in% c('MeadowV', 'IDOTRR', 'BrDale')] <- 0
 table(all$NeighRich)
 all$TotalPorchSF <- all$OpenPorchSF + all$EnclosedPorch + all$X3SsnPorch + all$ScreenPorch
 
+all$TotalSqFeet <- all$GrLivArea + all$TotalBsmtSF
+
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=TotalSqFeet, y=SalePrice))+
+  geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000)) +
+  geom_text_repel(aes(label = ifelse(all$GrLivArea[!is.na(all$SalePrice)]>4500, rownames(all), '')))
+
+cor(all$SalePrice, all$TotalSqFeet, use= "pairwise.complete.obs")
+
+cor(all$SalePrice[-c(524, 1299)], all$TotalSqFeet[-c(524, 1299)], use= "pairwise.complete.obs")
+
+all$TotalPorchSF <- all$OpenPorchSF + all$EnclosedPorch + all$X3SsnPorch + all$ScreenPorch
+
+cor(all$SalePrice, all$TotalPorchSF, use= "pairwise.complete.obs")
+
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=TotalPorchSF, y=SalePrice))+
+  geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
+  scale_y_continuous(breaks= seq(0, 800000, by=100000))
 
 #Dropping Highly Correlated ones
+
 dropVars <- c('YearRemodAdd', 'GarageYrBlt', 'GarageArea', 'GarageCond', 'TotalBsmtSF', 'TotalRmsAbvGrd', 
               'BsmtFinSF1')
 
 all <- all[,!(names(all) %in% dropVars)]
+
+#Outliers in the dataset
+all <- all[-c(524, 1299),]
 
 numericVarNames <- numericVarNames[!(numericVarNames %in% c('MSSubClass', 'MoSold', 'YrSold', 'SalePrice', 
                                                             'OverallQual', 'OverallCond'))] 
@@ -543,23 +627,22 @@ qqnorm(all$SalePrice)
 qqline(all$SalePrice)
 
 combined <- cbind(DFnorm, DFdummies) #combining all (now numeric) predictors into one dataframe 
-train1 <- combined[!is.na(all$SalePrice),]
-test1 <- combined[is.na(all$SalePrice),]
+
 colnames(all)
 str(all)
 ncol(all)
 max(all$YrSold)
-all$YrSold = 2010 - all$YrSold
-all <- subset(all, select = -Alley)
-all <- subset(all, select = -c(MSSubClass,HeatingQC))
-all <- subset(all, select = -c(GarageFinish, KitchenQual))
-all <- subset(all, select = -c(ExterCond))
-all <- subset(all, select = -c(TotRmsAbvGrd))
-all <- subset(all, select = -Street)
-all <- subset(all, select = -LandSlope)
-all <- subset(all, select = -CentralAir)
-all <- subset(all, select = -PavedDrive)
-sum(is.na(all))
+#all$YrSold = 2010 - all$YrSold
+#all <- subset(all, select = -Alley)
+#all <- subset(all, select = -c(MSSubClass,HeatingQC))
+#all <- subset(all, select = -c(GarageFinish, KitchenQual))
+#all <- subset(all, select = -c(ExterCond))
+#all <- subset(all, select = -c(TotRmsAbvGrd))
+#all <- subset(all, select = -Street)
+#all <- subset(all, select = -LandSlope)
+#all <- subset(all, select = -CentralAir)
+#all <- subset(all, select = -PavedDrive)
+#sum(is.na(all))
 #--------------------> Modelling <--------------------------
 library(caTools)
 colSums(is.na(all))
@@ -573,6 +656,19 @@ colnames(train)
 set.seed(27042018)
 colSums(is.na(all))
 str(train)
+
+#------------------------LASSO Regression Model-------------------------#
+install.packages("caret")
+install.packages("e1071")
+library(caret)
+library(e1071)
+set.seed(27042018)
+my_control <-trainControl(method="cv", number=5)
+lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.001,0.1,by = 0.0005))
+
+lasso_mod <- train(x=train, y=train$SalePrice, method='glmnet', trControl= my_control, tuneGrid=lassoGrid) 
+lasso_mod$bestTune
+
 
 #-----------------Running the Linear Regression Model-----------------------
 Linear_Reg_Model = lm(SalePrice~.,data=dataTrain)
@@ -614,6 +710,7 @@ rf_model <- randomForest(SalePrice ~ NeighRich+PoolQC+PoolArea+X3SsnPorch+MiscFe
                            BsmtExposure+WoodDeckSF+GarageQual+MasVnrArea+Neighborhood+TotalPorchSF+
                            Foundation+OpenPorchSF
                            , data = dataTrain,importance = TRUE)
+rf_model <- randomForest(SalePrice ~., data = train,importance = TRUE)
 imp_RF <- importance(rf_model)
 imp_DF <- data.frame(Variables = row.names(imp_RF), MSE = imp_RF[,1])
 dim(imp_DF)
@@ -625,10 +722,10 @@ ggplot(imp_DF[1:20,], aes(x=reorder(Variables, MSE), y=MSE, fill=MSE)) +
   coord_flip() + theme(legend.position="none")
 colnames(all)
 summary(rf_model)
-
-predictions <- predict(rf_model, newdata = dataTest)
+test$Id=test_final$Id
+predictions <- predict(rf_model, newdata = test)
 rmse <- sqrt(mean(((predictions)*(10^5)-dataTest$SalePrice)^2))
 cat("Root Mean Squared Error (RMSE):", rmse, "\n")
-result_rf <- data.frame(Id= test$Id, SalePrice = predictions*10^5)
+result_rf <- data.frame(Id= test$Id, SalePrice = predictions)
 write.csv(result_rf, file = "sample_submission.csv", row.names = FALSE)
 sum(is.na(result_rf))
