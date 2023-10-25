@@ -24,6 +24,7 @@ library(randomForest)
 
 #Training and testing data
 train <- read.csv("train.csv", stringsAsFactors = F)
+test <- read.csv("test.csv", stringsAsFactors = F)
 test_final <- read.csv("test.csv", stringsAsFactors = F)
 
 #Data Size and Structure 
@@ -483,11 +484,14 @@ all$TotalPorchSF <- all$OpenPorchSF + all$EnclosedPorch + all$X3SsnPorch + all$S
 
 
 #Dropping Highly Correlated ones
-dropVars <- c('YearRemodAdd', 'GarageYrBlt', 'GarageArea', 'GarageCond', 'TotalBsmtSF', 'TotalRmsAbvGrd', 'BsmtFinSF1')
+dropVars <- c('YearRemodAdd', 'GarageYrBlt', 'GarageArea', 'GarageCond', 'TotalBsmtSF', 'TotalRmsAbvGrd', 
+              'BsmtFinSF1')
 
 all <- all[,!(names(all) %in% dropVars)]
 
-numericVarNames <- numericVarNames[!(numericVarNames %in% c('MSSubClass', 'MoSold', 'YrSold', 'SalePrice', 'OverallQual', 'OverallCond'))] #numericVarNames was created before having done anything
+numericVarNames <- numericVarNames[!(numericVarNames %in% c('MSSubClass', 'MoSold', 'YrSold', 'SalePrice', 
+                                                            'OverallQual', 'OverallCond'))] 
+#numericVarNames was created before having done anything
 numericVarNames <- append(numericVarNames, c('Age', 'TotalPorchSF', 'TotBathrooms', 'TotalSqFeet'))
 
 DFnumeric <- all[, names(all) %in% numericVarNames]
@@ -532,7 +536,8 @@ skew(all$SalePrice)
 colnames(all)
 qqnorm(all$SalePrice)
 qqline(all$SalePrice)
-all$SalePrice <- log(all$SalePrice) #default is the natural logarithm, "+1" is not necessary as there are no 0's
+all$SalePrice <- log(all$SalePrice) 
+#default is the natural logarithm, "+1" is not necessary as there are no 0's
 skew(all$SalePrice)
 qqnorm(all$SalePrice)
 qqline(all$SalePrice)
@@ -550,6 +555,10 @@ all <- subset(all, select = -c(MSSubClass,HeatingQC))
 all <- subset(all, select = -c(GarageFinish, KitchenQual))
 all <- subset(all, select = -c(ExterCond))
 all <- subset(all, select = -c(TotRmsAbvGrd))
+all <- subset(all, select = -Street)
+all <- subset(all, select = -LandSlope)
+all <- subset(all, select = -CentralAir)
+all <- subset(all, select = -PavedDrive)
 sum(is.na(all))
 #--------------------> Modelling <--------------------------
 library(caTools)
@@ -562,7 +571,7 @@ dataTrain = subset(train,split==TRUE)
 dataTest = subset(train,split==FALSE)
 colnames(train)
 set.seed(27042018)
-colSums(is.na(train))
+colSums(is.na(all))
 str(train)
 
 #-----------------Running the Linear Regression Model-----------------------
@@ -597,13 +606,13 @@ ScreenPorch+WoodDeckSF+GarageCars+Functional+BsmtFullBath+X2ndFlrSF+X1stFlrSF+Bs
 
 #-----------------------------Random Forest Model-----------------------------
 rf_model <- randomForest(SalePrice ~ NeighRich+PoolQC+PoolArea+X3SsnPorch+MiscFeature+Condition2+
-                           LowQualFinSF+IsNew+BsmtHalfBath+MiscVal+Street+BsmtFinSF2+Heating+RoofMatl+
-                           ScreenPorch+SaleType+LotConfig+Electrical+Remod+LandSlope+BsmtFinType2+
+                           LowQualFinSF+BsmtHalfBath+MiscVal+BsmtFinSF2+Heating+RoofMatl+
+                           ScreenPorch+SaleType+LotConfig+Electrical+BsmtFinType2+
                            RoofStyle+Fence+HalfBath+Condition1+LandContour+MasVnrType+LotShape+
-                           HouseStyle+EnclosedPorch+BldgType+YrSold+Functional+BsmtCond+PavedDrive+
+                           HouseStyle+EnclosedPorch+BldgType+YrSold+Functional+BsmtCond+
                            Exterior1st+KitchenAbvGr+SaleCondition+Exterior2nd+MoSold+BedroomAbvGr+
                            BsmtExposure+WoodDeckSF+GarageQual+MasVnrArea+Neighborhood+TotalPorchSF+
-                           Foundation+OpenPorchSF+TotRmsAbvGrd
+                           Foundation+OpenPorchSF
                            , data = dataTrain,importance = TRUE)
 imp_RF <- importance(rf_model)
 imp_DF <- data.frame(Variables = row.names(imp_RF), MSE = imp_RF[,1])
@@ -618,7 +627,7 @@ colnames(all)
 summary(rf_model)
 
 predictions <- predict(rf_model, newdata = dataTest)
-rmse <- sqrt(mean((predictions-dataTest$SalePrice)^2))
+rmse <- sqrt(mean(((predictions)*(10^5)-dataTest$SalePrice)^2))
 cat("Root Mean Squared Error (RMSE):", rmse, "\n")
 result_rf <- data.frame(Id= test$Id, SalePrice = predictions*10^5)
 write.csv(result_rf, file = "sample_submission.csv", row.names = FALSE)
